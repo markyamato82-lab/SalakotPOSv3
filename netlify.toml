@@ -1,0 +1,3 @@
+# Netlify serves the launcher (index.html) from the repository root. No build step.
+[build]
+  publish = "."
