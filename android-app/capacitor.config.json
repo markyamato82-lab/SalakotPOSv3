@@ -1,0 +1,10 @@
+{
+  "appId": "ph.salakot.pos",
+  "appName": "SalakotPOS",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  }
+}
