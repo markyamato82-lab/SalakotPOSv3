@@ -6,6 +6,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothSocket;
+import android.graphics.Typeface;
 import android.content.Context;
 import android.content.Intent;
 import android.net.ConnectivityManager;
@@ -297,6 +298,86 @@ public class SalakotPrinterPlugin extends Plugin {
             call.reject("Couldn't share the file: " + e.getMessage());
         }
     }
+
+
+    // ---------------------------------------------------------------- iMin built-in printer (D1, Swan, Falcon, M2…)
+    // Uses iMin's own SDK via reflection, so the app still builds and runs on non-iMin tablets (the library is simply absent there).
+    private Object iminUtils;      // IminPrintUtils instance
+    private boolean iminTried, iminOk;
+
+    private synchronized boolean iminInit(int paper) {
+        if (iminOk && iminUtils != null) { iminSetPage(paper); return true; }
+        if (iminTried && !iminOk) return false;
+        iminTried = true;
+        try {
+            Class<?> cls = Class.forName("com.imin.printerlib.IminPrintUtils");
+            iminUtils = cls.getMethod("getInstance", Context.class).invoke(null, getContext());
+            Class<?> connType = Class.forName("com.imin.printerlib.IminPrintUtils$PrintConnectType");
+            Object spi = java.lang.Enum.valueOf((Class) connType, "SPI");
+            cls.getMethod("initPrinter", connType).invoke(iminUtils, spi);
+            iminOk = true;
+            iminSetPage(paper);
+            return true;
+        } catch (Throwable t) {
+            iminOk = false; iminUtils = null;
+            return false;
+        }
+    }
+    private void iminCall(String m, Class<?>[] sig, Object... args) {
+        try { iminUtils.getClass().getMethod(m, sig).invoke(iminUtils, args); } catch (Throwable ignored) { }
+    }
+    private void iminSetPage(int paper) { iminCall("setPageFormat", new Class[]{int.class}, paper == 58 ? 1 : 0); }
+
+    public boolean hasImin() { return iminInit(80); }
+
+    @PluginMethod
+    public void iminAvailable(PluginCall call) {
+        JSObject r = new JSObject(); r.put("available", iminInit(80)); call.resolve(r);
+    }
+
+    @PluginMethod
+    public void printImin(PluginCall call) {
+        final int paper = call.getInt("paper", 58);
+        final boolean cut = Boolean.TRUE.equals(call.getBoolean("cut", true));
+        final boolean drawer = Boolean.TRUE.equals(call.getBoolean("drawer", false));
+        final JSArray lines = call.getArray("lines");
+        if (lines == null) { call.reject("Nothing to print."); return; }
+        io.execute(() -> {
+            if (!iminInit(paper)) { call.reject("This tablet's built-in iMin printer isn't available."); return; }
+            try {
+                int width = paper == 58 ? 384 : 576;
+                iminCall("setTextWidth", new Class[]{int.class}, width);
+                for (int i = 0; i < lines.length(); i++) {
+                    org.json.JSONObject l = lines.getJSONObject(i);
+                    boolean rule = l.optBoolean("rule", false);
+                    boolean bold = l.optBoolean("b", false);
+                    boolean dw = l.optBoolean("dw", false), dh = l.optBoolean("dh", false);
+                    String a = l.optString("a", "left");
+                    String t = rule ? repeat('-', paper == 58 ? 32 : 48) : l.optString("t", "");
+                    iminCall("setAlignment", new Class[]{int.class}, a.equals("center") ? 1 : a.equals("right") ? 2 : 0);
+                    iminCall("setTextStyle", new Class[]{int.class}, bold ? 1 : 0);
+                    int size = 26; if (dw || dh) size = 48;
+                    iminCall("setTextSize", new Class[]{int.class}, size);
+                    iminCall("printText", new Class[]{String.class, int.class}, t + "\n", 0);
+                }
+                iminCall("setTextStyle", new Class[]{int.class}, 0);
+                iminCall("setTextSize", new Class[]{int.class}, 26);
+                iminCall("printAndFeedPaper", new Class[]{int.class}, 60);
+                if (cut) iminCall("partialCut", new Class[]{});
+                if (drawer) iminOpenDrawer();
+                call.resolve();
+            } catch (Throwable t) {
+                call.reject("The built-in printer couldn't print: " + t.getMessage());
+            }
+        });
+    }
+    private void iminOpenDrawer() {
+        // iMin cash drawer: try the SDK's own method names across SDK revisions
+        for (String m : new String[]{"openDrawer", "setDrawerCallback"}) {
+            try { iminUtils.getClass().getMethod(m).invoke(iminUtils); return; } catch (Throwable ignored) { }
+        }
+    }
+    private static String repeat(char c, int n) { StringBuilder b = new StringBuilder(); for (int i = 0; i < n; i++) b.append(c); return b.toString(); }
 
     @Override
     protected void handleOnDestroy() {

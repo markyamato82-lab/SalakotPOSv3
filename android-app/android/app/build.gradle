@@ -52,6 +52,8 @@ dependencies {
     implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
     implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
     implementation project(':capacitor-android')
+    implementation 'com.github.iminsoftware:IminPrinterLibrary:V2.0.0.18'   // iMin built-in printer; bundles SDK 1.0 (com.imin.printerlib, used on the Android 11 D1) and SDK 2.0
+    implementation 'com.github.bumptech.glide:glide:4.16.0'   // transitive dependency of the iMin library
     testImplementation "junit:junit:$junitVersion"
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
