@@ -12,5 +12,11 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         // a POS screen should never go dark in the middle of service
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // never serve a stale cached page — always load the app bundled in this APK
+        try {
+            android.webkit.WebView wv = getBridge().getWebView();
+            wv.getSettings().setCacheMode(android.webkit.WebSettings.LOAD_NO_CACHE);
+            wv.clearCache(true);
+        } catch (Throwable ignored) { }
     }
 }
