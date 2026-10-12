@@ -18,22 +18,18 @@ android {
         }
     }
     signingConfigs {
-        release {
-            // the signing key comes from GitHub secrets at build time; it is never stored in the repository
-            def ks = System.getenv('SALAKOT_KEYSTORE_FILE')
-            if (ks) {
-                storeFile file(ks)
-                storePassword System.getenv('SALAKOT_KEYSTORE_PASSWORD')
-                keyAlias System.getenv('SALAKOT_KEY_ALIAS')
-                keyPassword System.getenv('SALAKOT_KEY_PASSWORD')
-            }
+        salakot {
+            // Fixed keystore committed to the repo so every build signs identically.
+            // (A debug-class key; its only job is letting updates install over each other.)
+            storeFile file("../salakot-debug.keystore")
+            storePassword "salakotdebug"
+            keyAlias "salakotdebug"
+            keyPassword "salakotdebug"
         }
     }
     buildTypes {
         release {
-            if (System.getenv('SALAKOT_KEYSTORE_FILE')) {
-                signingConfig signingConfigs.release
-            }
+            signingConfig signingConfigs.salakot
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

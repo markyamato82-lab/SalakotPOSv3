@@ -48,37 +48,15 @@ jobs:
       - name: Copy the app into the Android project
         run: npx cap sync android
 
-      - name: Load the signing key
-        env:
-          KEYSTORE_BASE64: ${{ secrets.SALAKOT_KEYSTORE_BASE64 }}
-        run: |
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/salakot.jks"
-            echo "SALAKOT_KEYSTORE_FILE=$RUNNER_TEMP/salakot.jks" >> "$GITHUB_ENV"
-            echo "Signing key loaded: building a signed release APK."
-          else
-            echo "::warning::No signing key secret found, so this is a debug APK. Add the SALAKOT_* secrets so updates install over the previous version."
-          fi
-
       - name: Build the APK
         working-directory: android-app/android
-        env:
-          SALAKOT_KEYSTORE_PASSWORD: ${{ secrets.SALAKOT_KEYSTORE_PASSWORD }}
-          SALAKOT_KEY_ALIAS: ${{ secrets.SALAKOT_KEY_ALIAS }}
-          SALAKOT_KEY_PASSWORD: ${{ secrets.SALAKOT_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          VERSION="1.0.${GITHUB_RUN_NUMBER}"
-          if [ -n "$SALAKOT_KEYSTORE_FILE" ]; then
-            TASK=assembleRelease; OUT=app/build/outputs/apk/release/app-release.apk
-          else
-            TASK=assembleDebug; OUT=app/build/outputs/apk/debug/app-debug.apk
-          fi
-          ./gradlew "$TASK" -PsalakotVersionCode="$GITHUB_RUN_NUMBER" -PsalakotVersionName="$VERSION" --no-daemon --stacktrace
+          VERSION="1.1.${GITHUB_RUN_NUMBER}"
+          ./gradlew assembleRelease -PsalakotVersionCode="$GITHUB_RUN_NUMBER" -PsalakotVersionName="$VERSION" --no-daemon --stacktrace
           mkdir -p "$GITHUB_WORKSPACE/dist"
-          cp "$OUT" "$GITHUB_WORKSPACE/dist/SalakotPOS-$VERSION.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dist/SalakotPOS-$VERSION.apk"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-
       - name: Keep the APK with this build
         uses: actions/upload-artifact@v4
         with:

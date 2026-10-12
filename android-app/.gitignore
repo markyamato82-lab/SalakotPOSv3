@@ -6,6 +6,5 @@ android/capacitor-cordova-android-plugins/build/
 android/local.properties
 *.apk
 *.aab
-*.keystore
 *.jks
 .DS_Store
